@@ -24,6 +24,6 @@ tsp_venv/
 *.swp
 ilp_venv/
 tgpt_venv/
-.env/
+.env
 
 
