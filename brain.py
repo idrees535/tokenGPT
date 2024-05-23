@@ -1,6 +1,6 @@
 from openai import OpenAI
 import json
-from uniswap import get_uniswap_top_pools, get_uniswap_pool_day_data, price_impact_analysis
+from uniswap import get_uniswap_top_pools, get_uniswap_pool_day_data, price_impact_analysis,fetch_dune_client_query_data
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
 
@@ -22,7 +22,7 @@ class TokenGPT:
             self.gpt_memory.append({"role": "assistant", "content": tokengpt})
 
     def conversation(self, text):
-        system_message = f"""Your AI token engineering Assistant which will help you to navigate in complex landscape of 
+        system_message = f"""I am your AI token engineering Assistant which will help you to navigate in complex landscape of 
         design, verification and optimization of decentralized token based economies.
         Select the best function that describes the user query and call it and provide assitance
         If something isn't clear and arguments is not in the data you can ask the proactive question from the user to fill it out"""
@@ -31,14 +31,14 @@ class TokenGPT:
                 "type": "function",
                 "function": {
                     "name": "get_uniswap_top_pools",
-                    "description": "The function aims to assist users in getting the top pools from uniswap and presents its "
+                    "description": "The function aims to assist users in getting the data of top uniswap pools, user provides number of pools we wants to get data and this function will return the data like id, feetier, feesUSD, volumUSD, tvlUSD, symbol of token0 =, symbol of token1 etc. of each of top n pools, n is given by users based on how many top pool's data he wants to get "
                                    "ids"
                     ,
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "N": {"type": "string",
-                                  "description": "Its just the number of ids to get the pools from uniswap"}, },
+                                  "description": "Its is number of pools user wwants to get data, i.e if user sets N=10, the function will return data of top 10 uniswap v3 pools"}, },
                         'required': ['N']
                     },
                 },
@@ -47,16 +47,16 @@ class TokenGPT:
                 "type": "function",
                 "function": {
                     "name": "get_uniswap_pool_day_data",
-                    "description": "The function aims to assist users in getting the top pools from uniswap and presents its "
+                    "description": "Given the pool_id and number_of_days this function gets day data of that uniswap pool for number of days sepcifed by user, i.e user asks to get the data of pool_id= 0x2f5e87C9312fa29aed5c179E456625D79015299c and number_of_days=10 then theis function will return daily data of this pool the data will include daily price, volumeUSD, feesUSD, etc of each of the 10 days"
                                    "ids"
                     ,
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "pool_id": {"type": "string",
-                                        "description": "Its the id of pool to get the data from the uniswap"},
+                                        "description": "Its the id of Uniswap v3 pool for which user wants to get the daily data"},
                             "number_of_days": {"type": "string",
-                                               "description": "Its the number of days to get the data of the desired pool id from uniswap"}
+                                               "description": "Its the number of days to get the data of the desired pool id from uniswap, i.e if user speicifies 10 days then this function will get 10 days daily data of speciified pool id"}
                         },
                         'required': ['N', 'number_of_days']
                     },
@@ -67,25 +67,44 @@ class TokenGPT:
                 "type": "function",
                 "function": {
                     "name": "price_impact_analysis",
-                    "description": "The function aims to assist users in analyzing the price impact over a specified number "
-                                   "of weeks based on various transaction and market parameters."
+                    "description": "The function aims to assist users in analyzing the price impact of differnt token sinks(staking, locks, utility allocation, hodling etc). This function gets initial weekly transaction volume of token, initial token price, and initial circulating supply of token from user an nd based on these parameters it calculates the impact of differnt token sinks in the protocol on price of token , "
+                                   
                     ,
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "initial_weekly_transactions": {"type": "string",
-                                                            "description": "Initial number of weekly transactions"},
+                                                            "description": "Initial volume of weekly transactions"},
                             "initial_circulating_supply": {"type": "string",
-                                                           "description": "Initial circulating supply of the asset"},
+                                                           "description": "Initial circulating supply of the token"},
                             "initial_price": {
                                 "type": "string",
-                                "description": "Initial price of the asset"
+                                "description": "Initial price of the token"
                             }
                         },
                         'required': ["initial_weekly_transactions", "initial_circulating_supply", "initial_price"]
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "fetch_dune_client_query_data",
+                    "description": "This function gets the data from dune analytics dashboards given the query, user inputs the query id and and this functions returns the data given by this query id "
+                                   
+                    ,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query_id": {"type": "string",
+                                                            "description": "Id of dune analytics query"},
+                            
+                        },
+                        'required': ["query_id"]
+                    },
+                },
+            },
+
         ]
 
         system = [{"role": "system", "content": system_message}]
@@ -118,12 +137,17 @@ class TokenGPT:
                     "get_uniswap_top_pools": get_uniswap_top_pools,
                     # "answer_general_questions": self.general.rag_response,
                     "get_uniswap_pool_day_data": get_uniswap_pool_day_data,
-                    "price_impact_analysis": price_impact_analysis
+                    "price_impact_analysis": price_impact_analysis,
+                    "fetch_dune_client_query_data":fetch_dune_client_query_data,
                 }
                 function_to_call = available_functions[function_name]
+
                 if function_name == 'get_uniswap_pool_day_data':
-                    function_response = function_to_call(json_response)
-                    data = f"""Convert this data into insightful information for user in humanly textual message {json.dumps(function_response)}"""
+                    #function_response = function_to_call(json_response)
+                    function_response, image_paths = function_to_call(json_response)
+                    #data = f"Data saved as CSV and plots generated. Here are the image paths: {image_paths}"
+                    #messages = [{"role": "user", "content": data}]
+                    data = f"""Convert this data into  a table format also tell user that this data is saved in csv format in llm_data_dir folder of this project, whihc they can use anywhere they want  {json.dumps(function_response)}"""
                     messages = [{"role": "user", "content": data}]
                     response = self.client.chat.completions.create(
                          model="gpt-4o",
@@ -131,11 +155,35 @@ class TokenGPT:
                     )
                     response_message = response.choices[0].message.content
                     self.memory_manage(None, response_message)
-                    return response_message
+                    print(f"image_paths  {image_paths}")
+                    return response_message,image_paths
+                
+                elif function_name == 'get_uniswap_top_pools':
+                    function_response = function_to_call(json_response)
+                    data = f"""Convert this data into  a table format, also tell user that this data is saved in csv format in llm_data_dir folder of this project, whihc they can use anywhere they want {json.dumps(function_response)}"""
+                    messages = [{"role": "user", "content": data}]
+                    response = self.client.chat.completions.create(
+                         model="gpt-4o",
+                        messages=messages,
+                    )
+                    response_message = response.choices[0].message.content
+                    self.memory_manage(None, response_message)
+                    return response_message  
+
+
                 elif function_name == "price_impact_analysis":
-                    image, df_data = function_to_call(json_response)
-                    self.memory_manage(None, df_data)
-                    return image
+                    function_response, image_path = function_to_call(json_response)
+
+                    data = f"""Convert this data into  a table format, also tell user that this data is saved in csv format in llm_data_dir folder of this project {json.dumps(function_response)}"""
+                    messages = [{"role": "user", "content": data}]
+                    response = self.client.chat.completions.create(
+                         model="gpt-4o",
+                        messages=messages,
+                    )
+                    response_message = response.choices[0].message.content
+                    self.memory_manage(None, response_message)
+                    print(f"image_paths  {image_path}")
+                    return response_message, image_path
                 else:
                     function_response = function_to_call(json_response)
                     return function_response

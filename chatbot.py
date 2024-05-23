@@ -19,7 +19,7 @@ def add_message(history, message):
     if message["text"] is not None:
         history.append((message["text"], None))
     return history, gr.MultimodalTextbox(value=None, interactive=False)
-
+'''
 def bot(history):
     response = tk.conversation(history[-1][0])
     if response.endswith('.png'):
@@ -35,6 +35,22 @@ def bot(history):
         #     history[-1][1] += character
         #     time.sleep(0.05)
         #     # yield history
+    return history
+'''
+
+def bot(history):
+    response = tk.conversation(history[-1][0])
+    if isinstance(response, tuple):  # Check if the response is a tuple
+        message,image_paths = response
+        print(message)
+        for img_path in image_paths:
+            with open(img_path, "rb") as img_file:
+                b64_string = base64.b64encode(img_file.read()).decode()
+                img_html = f"<img src='data:image/png;base64,{b64_string}' />"
+                history.append((None, img_html))
+        history.append((None, message))
+    else:
+        history[-1][1] = response
     return history
 
 with gr.Blocks() as demo:
