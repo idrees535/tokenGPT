@@ -12,12 +12,26 @@ from sklearn.preprocessing import StandardScaler
 import numpy as np
 import uuid
 import os
+from dotenv import load_dotenv
 
 from scipy.stats import zscore
 from dune_client.client import DuneClient
 import datetime
 from pytz import utc
-base_path = '/mnt/d/Code/tokenGPT/llm_data_dir'
+
+load_dotenv()
+
+# Check if the variables are set correctly
+print(f"BASE_PATH: {os.getenv('BASE_PATH')}")
+print(f"DUNE_API_KEY: {os.getenv('DUNE_API_KEY')}")
+
+base_path = os.getenv('BASE_PATH')
+if not base_path:
+    raise ValueError("BASE_PATH environment variable not set.")
+
+dune_api_key = os.getenv('DUNE_API_KEY')
+if not dune_api_key:
+    raise ValueError("DUNE_API_KEY environment variable not set.")
 
 
 
@@ -293,13 +307,6 @@ def price_impact_analysis(arguments):
     axs[3].set_ylabel('Tokens Locked')
     axs[3].grid(True)
 
-    def save_plot_and_return_path(plot_func, filename):
-        img_path = os.path.join(base_path, filename)
-        plot_func()
-        plt.savefig(img_path)
-        plt.close()
-        image_paths.append(img_path)
-        return img_path
 
     plt.tight_layout()
     unique_id = uuid.uuid4()
@@ -312,10 +319,8 @@ def price_impact_analysis(arguments):
 def fetch_dune_client_query_data(arguments):
     query_id = int(arguments['query_id'])
     gpt_memory = arguments['gpt_memory']
-    dune_api_key = "gqBRKclPQMlU9Jm009ikKIrYV4gWhtuq"
     dune = DuneClient(dune_api_key)
-    #curl -H "X-Dune-API-Key:" gqBRKclPQMlU9Jm009ikKIrYV4gWhtuq"https://api.dune.com/api/v1/query/3467177/results?limit=1000"
-    # Fetch the latest query result
+    
     query_result = dune.get_latest_result(query_id)
     messsage = f"""Here are the results for query_id: {query_id}: {str(query_result['result'])}"""
     print(messsage)

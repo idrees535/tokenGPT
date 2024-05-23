@@ -3,16 +3,19 @@ import json
 from uniswap import get_uniswap_top_pools, get_uniswap_pool_day_data, price_impact_analysis,fetch_dune_client_query_data
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import HumanMessage, AIMessage
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 class TokenGPT:
     def __init__(self):
         self.initial_text = "My name is Token GPT and I am here to help you on tokennomics"
         self.gpt_memory = [{"role": "assistant", "content": self.initial_text}]
-        self.client = OpenAI(
-            # This is the default and can be omitted
-            api_key="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"
-        )
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable.")
+        self.client = OpenAI(api_key=api_key)
 
     def memory_manage(self, human=None, tokengpt=None):
         if human is not None:
